@@ -508,20 +508,37 @@ body { background: #dad7d3; display: flex; align-items: center; justify-content:
   .device { width: 100%; height: 100%; border-radius: 0; }
 }
 
-/* the bot lives in the dial's slot: on top of the card, so its shadow, glow and squash land on the card */
+/* the bot lives in the dial's slot: on top of the card, so its shadow, glow and squash land on the card.
+   180 × 180 host = a 108px ball (10 % smaller than the 120px countdown it replaces), centred on the dial. */
 .bot-host {
-  position: absolute; left: -40px; top: -38px; width: 200px; height: 200px;
+  position: absolute; left: -30px; top: -28px; width: 180px; height: 180px;
   transform-origin: 50% 49%;                 /* the ball's centre = the countdown's centre */
-  opacity: 0; transform: scale(0); pointer-events: none;
+  opacity: 0; transform: translateY(var(--bot-rise, 0px)) scale(0); pointer-events: none;
   transition: transform .3s cubic-bezier(.5,0,.75,0), opacity .2s ease .1s;   /* shrinks away (e.g. into the delivered check) */
 }
 /* grows out of the point the countdown shrank into, with a springy overshoot */
 .device.has-bot .bot-host {
-  opacity: 1; transform: none; pointer-events: auto;
+  opacity: 1; transform: translateY(var(--bot-rise, 0px)) scale(1); pointer-events: auto;
   transition: transform .55s cubic-bezier(.34, 1.56, .64, 1), opacity .12s ease;
 }
 .device.has-bot .dial__timer { opacity: 0; }
 .device.has-bot .dial__static { opacity: 0; transform: scale(.6); }
+
+/* ---------- bot states: the status card becomes a speech bubble pointing up at the bot ----------
+   Same white surface and 24px corners as the card; the scooped top is replaced by a plain rounded
+   top with a pointer. The bot rises above it to make room for the pointer. */
+.device.is-bubble { --bot-rise: -45px; }
+.cutout { overflow: hidden; transition: height .45s var(--ease-smart), opacity .25s ease; }
+.device.is-bubble .cutout { height: 0; opacity: 0; }
+.device.is-bubble .status-card__content { overflow: visible; }
+.status-body { position: relative; border-radius: 0 0 24px 24px; }
+.device.is-bubble .status-body { border-radius: 24px; }
+.status-body::before {
+  content: ""; position: absolute; left: 50%; top: -17.5px; width: 44px; height: 18px; margin-left: -22px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 18'%3E%3Cpath d='M0 18C6.5 18 10.5 15.6 13.6 11L19.4 2.4C20.6.6 23.4.6 24.6 2.4L30.4 11C33.5 15.6 37.5 18 44 18Z' fill='%23fff'/%3E%3C/svg%3E") no-repeat center / 100% 100%;
+  opacity: 0; transition: opacity .2s ease; pointer-events: none;
+}
+.device.is-bubble .status-body::before { opacity: 1; }
 
 /* the bot types its lines into the status title; a brand-red caret shows while it types */
 .status-details__title { min-height: 30px; white-space: nowrap; }
@@ -565,6 +582,10 @@ body { background: #dad7d3; display: flex; align-items: center; justify-content:
   -webkit-backdrop-filter: blur(8px) saturate(1.15) brightness(1.03);
   backdrop-filter: blur(8px) saturate(1.15) brightness(1.03);
 }
+
+/* the sheet keeps its own scroll position when the card changes shape; don't let the browser's
+   scroll anchoring shift it a second time (it pushed the bubble up when the scoop collapsed) */
+.scroller { overflow-anchor: none; }
 
 </style>
 </head>
@@ -651,10 +672,10 @@ body { background: #dad7d3; display: flex; align-items: center; justify-content:
                     <linearGradient id="arcGrad" x1="58.7" y1="8.38" x2="67.6" y2="112.38" gradientUnits="userSpaceOnUse"><stop stop-color="#FF3564"/><stop offset="0.48" stop-color="#ED1944"/><stop offset="1" stop-color="#D90F4F"/></linearGradient>
                     <filter id="arcBlur" x="0" y="0" width="120" height="120" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="2"/></filter>
                   </defs>
-                  <circle id="dialArc" cx="60" cy="60.38" r="52" pathLength="1" fill="none" stroke="url(#arcGrad)" stroke-opacity="0.8" stroke-width="16" stroke-linecap="round" stroke-dasharray="0.002 2" transform="rotate(-90 60 60.38)"/>
+                  <circle id="dialArc" cx="60" cy="60.38" r="52" pathLength="1" fill="none" stroke="url(#arcGrad)" stroke-opacity="0.8" stroke-width="16" stroke-linecap="round" stroke-dasharray="0.5 2" transform="rotate(-90 60 60.38)"/>
                   <circle id="dialArcBlur" cx="60" cy="60.38" r="44.09" pathLength="1" fill="none" stroke="#000" stroke-width="1" stroke-linecap="round" stroke-dasharray="0.002 2" opacity="0.21" filter="url(#arcBlur)" transform="rotate(-90 60 60.38)"/>
                 </svg>
-                <span class="dial__time" id="dialTime">۰۰:۰۵</span>
+                <span class="dial__time" id="dialTime">۲۲:۳۰</span>
               </div>
               <img class="dial__static" id="dialStatic" src="data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHZpZXdCb3g9IjAgMCAxMjAgMTIwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZyBpZD0iU3RhdHVzIERpYWwiPgo8Y2lyY2xlIGlkPSJTdGF0dXMgUmluZyIgY3g9IjYwIiBjeT0iNjAiIHI9IjYwIiBmaWxsPSJ1cmwoI3BhaW50MF9saW5lYXJfMF80NSkiIGZpbGwtb3BhY2l0eT0iMC40Ii8+CjxnIGlkPSJJbmRpY2F0b3IgQ2VudGVyIFN1cmZhY2UiIGZpbHRlcj0idXJsKCNmaWx0ZXIxX2RpZl8wXzQ1KSI+CjxjaXJjbGUgY3g9IjYwIiBjeT0iNjAiIHI9IjQ0IiBmaWxsPSIjRkFGOUZCIi8+CjwvZz4KPGcgaWQ9IkRlbGl2ZXJ5IENoZWNrIEdsb3ciIG9wYWNpdHk9IjAuMTUiIGZpbHRlcj0idXJsKCNmaWx0ZXIyX2ZfMF80NSkiPgo8cGF0aCBkPSJNNTUuMDEyOSA3NEM1NC4yOTA0IDc0IDUzLjU0ODkgNzMuNzE0OCA1Mi45OTc1IDczLjE2MzRMNDQuNjY5NSA2NC44MzU0QzQzLjU0NzcgNjMuNzEzNiA0My41NDc3IDYxLjkwNzMgNDQuNjY5NSA2MC44MDQ1QzQ1Ljc5MTMgNTkuNzAxNyA0Ny41OTc2IDU5LjY4MjcgNDguNzAwNCA2MC44MDQ1TDU0Ljk5MzkgNjcuMDk4TDcxLjMwNzYgNTAuODQxNEM3Mi40Mjk0IDQ5LjcxOTUgNzQuMjM1NyA0OS43MTk1IDc1LjMzODUgNTAuODQxNEM3Ni40NDEzIDUxLjk2MzIgNzYuNDYwMyA1My43Njk1IDc1LjMzODUgNTQuODcyM0w1Ny4wNDc0IDczLjE2MzRDNTYuNDk2IDczLjcxNDggNTUuNzU0NCA3NCA1NS4wMzE5IDc0SDU1LjAxMjlaIiBmaWxsPSIjMjg5RTVGIi8+CjwvZz4KPHBhdGggaWQ9IkRlbGl2ZXJ5IENoZWNrIEdseXBoIiBkPSJNNTUuMDEyNSA3MkM1NC4yOSA3MiA1My41NDg0IDcxLjcxNDggNTIuOTk3IDcxLjE2MzRMNDQuNjY5IDYyLjgzNTRDNDMuNTQ3MiA2MS43MTM2IDQzLjU0NzIgNTkuOTA3MyA0NC42NjkgNTguODA0NUM0NS43OTA4IDU3LjcwMTcgNDcuNTk3MSA1Ny42ODI3IDQ4LjY5OTkgNTguODA0NUw1NC45OTM1IDY1LjA5OEw3MS4zMDcyIDQ4Ljg0MTRDNzIuNDI5IDQ3LjcxOTUgNzQuMjM1MyA0Ny43MTk1IDc1LjMzODEgNDguODQxNEM3Ni40NDA5IDQ5Ljk2MzIgNzYuNDU5OSA1MS43Njk1IDc1LjMzODEgNTIuODcyM0w1Ny4wNDY5IDcxLjE2MzRDNTYuNDk1NSA3MS43MTQ4IDU1Ljc1NCA3MiA1NS4wMzE1IDcySDU1LjAxMjVaIiBmaWxsPSIjMjg5RTVGIi8+CjwvZz4KPGRlZnM+CjxmaWx0ZXIgaWQ9ImZpbHRlcjFfZGlmXzBfNDUiIHg9IjEyIiB5PSIxNCIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiBmaWx0ZXJVbml0cz0idXNlclNwYWNlT25Vc2UiIGNvbG9yLWludGVycG9sYXRpb24tZmlsdGVycz0ic1JHQiI+CjxmZUZsb29kIGZsb29kLW9wYWNpdHk9IjAiIHJlc3VsdD0iQmFja2dyb3VuZEltYWdlRml4Ii8+CjxmZUNvbG9yTWF0cml4IGluPSJTb3VyY2VBbHBoYSIgdHlwZT0ibWF0cml4IiB2YWx1ZXM9IjAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDEyNyAwIiByZXN1bHQ9ImhhcmRBbHBoYSIvPgo8ZmVPZmZzZXQgZHk9IjIiLz4KPGZlR2F1c3NpYW5CbHVyIHN0ZERldmlhdGlvbj0iMiIvPgo8ZmVDb2xvck1hdHJpeCB0eXBlPSJtYXRyaXgiIHZhbHVlcz0iMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMC4yIDAiLz4KPGZlQmxlbmQgbW9kZT0ibm9ybWFsIiBpbjI9IkJhY2tncm91bmRJbWFnZUZpeCIgcmVzdWx0PSJlZmZlY3QxX2Ryb3BTaGFkb3dfMF80NSIvPgo8ZmVCbGVuZCBtb2RlPSJub3JtYWwiIGluPSJTb3VyY2VHcmFwaGljIiBpbjI9ImVmZmVjdDFfZHJvcFNoYWRvd18wXzQ1IiByZXN1bHQ9InNoYXBlIi8+CjxmZUNvbG9yTWF0cml4IGluPSJTb3VyY2VBbHBoYSIgdHlwZT0ibWF0cml4IiB2YWx1ZXM9IjAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDEyNyAwIiByZXN1bHQ9ImhhcmRBbHBoYSIvPgo8ZmVPZmZzZXQgZHk9IjQiLz4KPGZlR2F1c3NpYW5CbHVyIHN0ZERldmlhdGlvbj0iNiIvPgo8ZmVDb21wb3NpdGUgaW4yPSJoYXJkQWxwaGEiIG9wZXJhdG9yPSJhcml0aG1ldGljIiBrMj0iLTEiIGszPSIxIi8+CjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDEgMCAwIDAgMCAxIDAgMCAwIDAgMSAwIDAgMCAxIDAiLz4KPGZlQmxlbmQgbW9kZT0ibm9ybWFsIiBpbjI9InNoYXBlIiByZXN1bHQ9ImVmZmVjdDJfaW5uZXJTaGFkb3dfMF80NSIvPgo8ZmVHYXVzc2lhbkJsdXIgc3RkRGV2aWF0aW9uPSIxIiByZXN1bHQ9ImVmZmVjdDNfZm9yZWdyb3VuZEJsdXJfMF80NSIvPgo8L2ZpbHRlcj4KPGZpbHRlciBpZD0iZmlsdGVyMl9mXzBfNDUiIHg9IjM1LjgyODEiIHk9IjQyIiB3aWR0aD0iNDguMzQ0NiIgaGVpZ2h0PSI0MCIgZmlsdGVyVW5pdHM9InVzZXJTcGFjZU9uVXNlIiBjb2xvci1pbnRlcnBvbGF0aW9uLWZpbHRlcnM9InNSR0IiPgo8ZmVGbG9vZCBmbG9vZC1vcGFjaXR5PSIwIiByZXN1bHQ9IkJhY2tncm91bmRJbWFnZUZpeCIvPgo8ZmVCbGVuZCBtb2RlPSJub3JtYWwiIGluPSJTb3VyY2VHcmFwaGljIiBpbjI9IkJhY2tncm91bmRJbWFnZUZpeCIgcmVzdWx0PSJzaGFwZSIvPgo8ZmVHYXVzc2lhbkJsdXIgc3RkRGV2aWF0aW9uPSI0IiByZXN1bHQ9ImVmZmVjdDFfZm9yZWdyb3VuZEJsdXJfMF80NSIvPgo8L2ZpbHRlcj4KPGxpbmVhckdyYWRpZW50IGlkPSJwYWludDBfbGluZWFyXzBfNDUiIHgxPSI1MS4wMDc4IiB5MT0iMi40ODIzMyIgeDI9IjU2Ljg0NyIgeTI9IjExOS4yMDYiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KPHN0b3Agc3RvcC1jb2xvcj0id2hpdGUiLz4KPHN0b3Agb2Zmc2V0PSIwLjQ4IiBzdG9wLWNvbG9yPSIjRURFREVEIi8+CjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI0Q5RDlEOSIvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+Cjwvc3ZnPgo=" alt="" />
               <div class="bot-host" id="bot" role="img" aria-label="دستیار خرید"></div>
@@ -1994,7 +2015,7 @@ window.FlowBot = (() => {
     if (sEl.textContent !== SUB) setSub(SUB);
     beat(async ep => {
       if (name === 'confirmDelivery') {
-        hold('surprised'); await wait(from === 'out' ? 300 : 150, ep);   // it comes alive out of the expired countdown
+        hold('surprised'); await wait(from === 'out' ? 1180 : 150, ep);  // it pops up, opens its bubble, then speaks into it
         await typeTo(ep, QUESTION, {erasing: 'listening', speed: 1.5});
       } else {
         hold('sorry');                                                    // "not delivered": worried, straight to work
@@ -2030,17 +2051,17 @@ window.FlowBot = (() => {
    *   confirmDelivery ──"تحویل گرفتم"──▶ delivered
    *   confirmDelivery ──"تحویل نگرفتم"──▶ support
    *
-   * The courier state is the real-time LAST 5 SECONDS of the ride: the
-   * countdown ticks ۰۰:۰۵ → ۰۰:۰۰ at normal speed and the courier covers
-   * the final stretch to the door at a normal riding pace, arriving at 00:00.
-   * The ring (iteration-4 style) shows what's left of the 45-minute order,
-   * so it is all but empty here and drains away completely at 00:00.
+   * Courier state (review feedback): the ring starts HALF full — half of the
+   * 45-minute order left, ۲۲:۳۰ — and drains to 0 very fast, as if the courier
+   * arrives in 3 s: the countdown races down to ۰۰:۰۰ while the courier rides
+   * the rest of the route and pulls up at the door exactly at 00:00.
    * ------------------------------------------------------------------ */
   const FULL = 45 * 60;                 // the whole order (ring = what's left of it)
   const OUT = 35 * 60;                  // out for delivery starts with 34:59 left
-  const SHOWN_SECS = 5;                 // only the last 5 seconds before the door are shown, in real time
-  const SPEED = Math.max(0.1, Number(new URLSearchParams(location.search).get("speed")) || 1);
-  const OUT_START = Math.max(0, OUT - SHOWN_SECS * SPEED);   // where the clock joins the ride
+  const SHOWN_SECS = 3;                 // the courier "arrives in 3 s"
+  const START_LEFT = FULL * 0.5;        // the ring starts at 50 % (۲۲:۳۰ left)
+  const SPEED = Math.max(0.1, Number(new URLSearchParams(location.search).get("speed")) || START_LEFT / SHOWN_SECS);
+  const OUT_START = Math.max(0, OUT - Math.min(START_LEFT, SHOWN_SECS * SPEED));   // where the clock joins the ride
   const GAP = 300;                      // content top (px at 390 wide), as in all four Figma frames
   const ORDER = ["out", "confirmDelivery", "delivered"];   // ← / → keys
 
@@ -2110,17 +2131,20 @@ window.FlowBot = (() => {
     current = name;
     device.dataset.state = name;
     stateSelect.value = name;
-    if (!st.bot) title.textContent = st.title;      // bot states: the bot erases the old title and types its own
+    if (!st.bot) title.textContent = st.title;      // bot states: the bot types its own title
+    else if (from === "out") title.textContent = "";  // a brand-new bubble: the bot types the question into it
+    if (!st.bot) settleBot();
     renderExtra(name);
     device.classList.toggle("is-static", !!st.dial);
     device.classList.toggle("has-bot", !!st.bot);
+    device.classList.toggle("is-bubble", !!st.bot);   // the card turns into a speech bubble under the bot
     if (st.dial) {
       const src = AS(st.dial);
       if (dialStatic.getAttribute("src") !== src) dialStatic.setAttribute("src", src);
       if (!prevStatic) { dialStatic.classList.remove("is-swap"); void dialStatic.offsetWidth; dialStatic.classList.add("is-swap"); }
     }
     if (st.bot) FlowBot.enter(name, { from }); else FlowBot.leave();
-    if (name === "out") resetDial();
+    if (name === "out") { resetDial(); lastSec = Math.ceil(OUT - elapsed()); dialTime.textContent = fmt(lastSec); }
     // embedded previews (sandboxed iframes) can refuse URL changes; never let that break the transition
     try { history.replaceState(null, "", location.search + `#${name}`); } catch (_) {}
   }
@@ -2142,7 +2166,7 @@ window.FlowBot = (() => {
     sheet.follow(true);
     const toBot = !!STATES[name].bot;
     const handing = from === "out" && name === "confirmDelivery";
-    if (handing) await handover();                    // the countdown turns into the bot
+    if (handing) await collapse();                    // the countdown and its card fold away
     const outFx = { opacity: [1, 0], transform: ["none", "translateY(-6px)"] };
     const outs = [
       extra.animate(outFx, { duration: OUT_MS, easing: "ease-in", fill: "forwards" }),
@@ -2150,13 +2174,16 @@ window.FlowBot = (() => {
     ];
     if (!handing) await wait(OUT_MS);
     const h0 = body.offsetHeight;
+    if (handing) botLock(true);                        // the pop-and-rise below drives the bot, not its CSS transition
     try { applyState(name, from); }
     finally { outs.forEach((a) => a.cancel()); }      // the old card content must never stay faded out
-    animateHeight(body, h0, body.offsetHeight);
+    const late = handing ? popBubble() : 0;           // the bot pops and rises while the bubble opens under it
+    if (!handing) animateHeight(body, h0, body.offsetHeight);
     [...extra.children].forEach((el, i) =>
-      el.animate({ opacity: [0, 1], transform: ["translateY(10px) scale(.98)", "none"] }, { duration: IN_MS, delay: 60 + i * 50, easing: EASE, fill: "backwards" }));
+      el.animate({ opacity: [0, 1], transform: ["translateY(10px) scale(.98)", "none"] }, { duration: IN_MS, delay: late + 60 + i * 50, easing: EASE, fill: "backwards" }));
     $$(".action", extra).forEach((el, i) =>
-      el.animate({ opacity: [0, 1], transform: ["translateY(8px) scale(.9)", "none"] }, { duration: IN_MS, delay: 80 + i * 45, easing: "cubic-bezier(.34,1.4,.64,1)", fill: "backwards" }));
+      el.animate({ opacity: [0, 1], transform: ["translateY(8px) scale(.9)", "none"] }, { duration: IN_MS, delay: late + 80 + i * 45, easing: "cubic-bezier(.34,1.4,.64,1)", fill: "backwards" }));
+    if (handing) await wait(late);
     if (!toBot) title.animate({ opacity: [0, 1], filter: ["blur(4px)", "blur(0)"], transform: ["translateY(6px)", "none"] }, { duration: IN_MS, easing: EASE });
     await wait(IN_MS + 40);
     running = false;
@@ -2164,14 +2191,67 @@ window.FlowBot = (() => {
     if (pending && pending !== current) { const p = pending; pending = null; transition(p); } else pending = null;
   }
 
-  /* countdown → bot: shrink & grow.
-     At 00:00 the glass countdown shrinks away to a point, and from that same point the bot grows
-     back out to full size (a springy overshoot) and wakes up; then it retypes the title. */
-  const resetDial = () => [gauge, dialTime].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
-  async function handover() {
-    gauge.animate({ transform: ["scale(1)", "scale(1.05)", "scale(0)"], opacity: [1, 1, 0], offset: [0, .25, 1] },
-      { duration: 380, easing: "cubic-bezier(.5,0,.75,0)", fill: "forwards" });
-    await wait(370);                                  // the bot starts growing as the countdown vanishes
+  /* countdown → question (review feedback):
+     1. the countdown and its attached card (title, address, actions) collapse — the dial shrinks to a
+        point and the card folds up into it;
+     2. the bot pops out of that point and rises, and at the same time a speech bubble opens under it,
+        pointing up at the bot, holding the question, the address and the answers. */
+  const card = $(".status-card__content"), botEl = $("#bot");
+  const RISE = 45;                                    // = --bot-rise in flow.css
+  let cardAnims = [], botAnim = null, botLockT = 0;
+  const resetDial = () => {
+    [gauge, dialTime].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
+    cardAnims.forEach((a) => a.cancel()); cardAnims = [];
+  };
+  function botLock(on) {                              // CSS transitions outrank WAAPI: park the bot's while we animate it
+    clearTimeout(botLockT);
+    botEl.style.transition = on ? "none" : "";
+  }
+  function settleBot() {                              // leaving the bot: stop any pop still running
+    if (botAnim) { botAnim.cancel(); botAnim = null; }
+    botLock(false);
+  }
+  // timeline (ms): collapse 0–420 · bot pops low 0–300 and rises 300–860 · bubble grows from its mouth 720–1280 ·
+  // then the bubble's own content: address, answers and the bot typing the question (from ~1160)
+  const COLLAPSE = 420, POP = 300, BOT_MS = 860, BUBBLE_AT = 720, BUBBLE_MS = 560, CONTENT_AT = 1160;
+  const POP_LOW = 34;                                 // the bot pops this far below the dial centre, then travels up
+  async function collapse() {
+    // a small breath in, then an accelerating shrink to a point (10 % slower than before)
+    gauge.animate([
+      { transform: "scale(1)", opacity: 1, easing: "cubic-bezier(.3,0,.3,1)" },
+      { transform: "scale(1.06)", opacity: 1, offset: .22, easing: "cubic-bezier(.6,0,.25,1)" },
+      { transform: "scale(0)", opacity: 0 },
+    ], { duration: COLLAPSE, fill: "forwards" });
+    card.style.transformOrigin = "50% -33px";         // the card folds up into the dial's centre with it
+    cardAnims.push(card.animate([
+      { transform: "none", opacity: 1, easing: "cubic-bezier(.3,0,.3,1)" },
+      { transform: "translateY(-4px) scale(.98, .95)", opacity: 1, offset: .22, easing: "cubic-bezier(.6,0,.25,1)" },
+      { transform: "scale(.22, .03)", opacity: 0 },
+    ], { duration: COLLAPSE, fill: "forwards" }));
+    await wait(COLLAPSE - 10);
+  }
+  function popBubble() {
+    // 1. the bot pops a little below where the countdown vanished (already drifting up), then rises into place
+    botAnim = botEl.animate([
+      { transform: `translateY(${POP_LOW}px) scale(0)`, easing: "cubic-bezier(.34,1.45,.64,1)" },
+      { transform: `translateY(${POP_LOW - 10}px) scale(1)`, offset: POP / BOT_MS, easing: "cubic-bezier(.45,0,.2,1)" },
+      { transform: `translateY(-${RISE}px) scale(1)` },
+    ], { duration: BOT_MS });
+    botAnim.finished.then(() => { botAnim = null; botLock(false); }, () => {});
+    // 2. the bubble grows out of the bot's mouth (it sits behind the ball, so it seems to come out of it)
+    card.style.transformOrigin = `50% -${RISE + 33 - 12}px`;   // ball centre (dial centre − rise) + 12px down to the mouth
+    const open = card.animate([
+      { transform: "scale(.05, .04)", easing: "cubic-bezier(.35,.75,.3,1)" },
+      { transform: "scale(1.012)", offset: .78, easing: "cubic-bezier(.4,0,.6,1)" },
+      { transform: "none" },
+    ], { duration: BUBBLE_MS, delay: BUBBLE_AT, fill: "backwards" });
+    const show = card.animate({ opacity: [0, 1] }, { duration: 140, delay: BUBBLE_AT, easing: "linear", fill: "backwards" });
+    cardAnims.forEach((a) => a.cancel());             // the folded card is held by the bubble's backwards fill
+    cardAnims = [open, show];
+    // 3. only then its content: the address fades in (the bot types the question, the answers spring in)
+    $("#statusSub").animate({ opacity: [0, 1], transform: ["translateY(4px)", "none"] },
+      { duration: 360, delay: CONTENT_AT, easing: EASE, fill: "backwards" });
+    return CONTENT_AT;
   }
 
   function jump(name) {
@@ -2179,7 +2259,7 @@ window.FlowBot = (() => {
     if (name === "out") setClock(OUT_START);
     transition(name);
   }
-  // restart the whole flow: courier (last 5 s) → question → delivered / follow-up
+  // restart the whole flow: courier (arrives in 3 s) → question → delivered / follow-up
   function restart() {
     setClock(OUT_START);
     lastSec = -1;
@@ -2210,16 +2290,19 @@ window.FlowBot = (() => {
   /* ---------- courier on the route (iteration 5), in step with the countdown ---------- */
   const routeEl = $("#routeLeft"), routeDone = $("#routeDone"), courier = $("#courier");
   const ROUTE_X = 87.889, ROUTE_Y = 187.879, ROUTE_LEN = routeEl.getTotalLength();
-  const T_PARK = 0.97;
-  const LAST_STRETCH = 0.18;           // share of the route the courier rides in the last 5 s (same normal pace, ~75 map px)
+  const T_START = 0.1, T_PARK = 0.97;
   const PARKED = { x: 312.2, y: 207.1, a: 16.73 };   // Figma: courier waiting at the door
   let lastKey = "", heading = null, pos = null;
   const pt = (t) => routeEl.getPointAtLength(clamp01(t) * ROUTE_LEN);
   function moveCourier() {
     let x, y, a, t = T_PARK;
     if (current === "out") {
+      // where the courier really is at this time (whole ride = the 35-minute leg), eased so it sets off
+      // and pulls up smoothly while still arriving exactly at 00:00
       const k = clamp01((elapsed() - OUT_START) / (OUT - OUT_START));
-      t = T_PARK - LAST_STRETCH * Math.pow(1 - k, 1.35);   // steady, easing off a touch as it pulls up at the door
+      const ease = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      const from = T_START + (T_PARK - T_START) * (OUT_START / OUT);
+      t = from + (T_PARK - from) * ease;
       const p = pt(t), d = 4 / ROUTE_LEN, p0 = pt(t - d), p1 = pt(t + d);
       x = p.x + ROUTE_X; y = p.y + ROUTE_Y;
       a = (Math.atan2(p1.y - p0.y, p1.x - p0.x) * 180) / Math.PI + 90;     // artwork faces up
@@ -2245,7 +2328,7 @@ window.FlowBot = (() => {
     const e = elapsed();
     const arcTarget = current === "out" ? remaining(e) : 0;
     const d = arcTarget - arcShown;
-    arcShown += Math.abs(d) > 0.01 ? d * 0.12 : d;      // jumps glide, the countdown tracks the clock
+    arcShown += Math.abs(d) > 0.06 ? d * 0.12 : d;      // jumps (restart) glide; while driving the ring tracks the clock exactly
     if (Math.abs(arcShown - arcSet) > 0.0002) {
       arcSet = arcShown;
       const d = `${Math.max(0.0001, arcShown).toFixed(4)} 2`;
@@ -2284,7 +2367,10 @@ window.FlowBot = (() => {
     const map = $("#map");
     let E = 0, maxScroll = 0, mode = "expanded", follow = false;
     const H = () => scroller.clientHeight;
-    const peek = () => $("#statusDetails").getBoundingClientRect().bottom - content.getBoundingClientRect().top + 24;
+    // layout position (not the painted one): the card's fold / bubble animations transform it and must not move the sheet
+    const offsetIn = (el, anc) => { let y = 0; while (el && el !== anc) { y += el.offsetTop; el = el.offsetParent; } return y; };
+    const details = $("#statusDetails");
+    const peek = () => offsetIn(details, content) + details.offsetHeight + 24;
     const gapNow = () => GAP * (map.offsetWidth / 390);
     function layout() {
       const h = H();
@@ -2411,7 +2497,7 @@ window.FlowBot = (() => {
   setClock(OUT_START);
   transition(initial, { instant: true });
   sheet.init();
-  // start the courier's last 5 s only once the page has actually painted (big inline assets can delay it)
+  // start the courier's 3 s only once the page has actually painted (big inline assets can delay it)
   requestAnimationFrame(() => requestAnimationFrame(() => { if (current === "out") setClock(OUT_START); frame(); }));
 })();
 
